@@ -1,42 +1,13 @@
 import collections
+import math
 import time
 
 import jax.numpy as np
-import numpy.random as npr
-import tensorflow as tf
 
 from jax import jit, grad, random
-from jax.experimental import optimizers, stax
-from jax.experimental.stax import (
-    Conv,
-    Dense,
-    Flatten,
-    GeneralConv,
-    MaxPool,
-    Relu,
-    LogSoftmax,
-    Dropout,
-)
-from tqdm import tqdm
-from utils import get_ds_batches
-
-
-def lenet(num_classes: int, mode: str = "train") -> stax:
-    return stax.serial(
-        # GeneralConv(('NHWC', 'OIHW', 'NHWC'), 32, (5, 5)), Relu,
-        Conv(32, (5, 5)),
-        Relu,
-        MaxPool((2, 2), strides=(2, 2)),
-        Conv(64, (5, 5)),
-        Relu,
-        MaxPool((2, 2), strides=(2, 2)),
-        Flatten,
-        Dense(1024),
-        Relu,
-        Dropout(0.5, mode),
-        Dense(num_classes),
-        LogSoftmax,
-    )
+from jax.experimental import optimizers
+from jax_nets import lenet, ResNet20
+from utils import get_ds_keras
 
 
 def cross_entropy(logits, labels):
@@ -57,54 +28,51 @@ def accuracy(logits, labels):
 
 def jit_update_fun(model_fun, loss, opt):
     opt_update, get_params = opt
-
     def update(i, opt_state, batch, rng):
         params = get_params(opt_state)
         grads = grad(loss_fun)(params, batch, model_fun, rng)
         return opt_update(i, grads, opt_state)
-
     return jit(update)
 
 
 def jit_predict_fun(model_fun):
     def predict(params, inputs, rng=None):
         return jit(model_fun)(params, inputs, rng=rng)
-
     return predict
 
 
 def main():
     key = random.PRNGKey(0)
-    num_epochs = 5
+    ds_name = "mnist"
+    ds_dir = "/data"
+    # net_name = "ResNet20"
+    num_epochs = 15
     batch_size = 128
     step_size = 1e-3
-    # data_dir = 'projects/tfds'
+    num_classes = 10
+    net_dict = {"mnist": lenet, "cifar10": ResNet20}
+    net = net_dict[ds_name]
 
-    train_ds = get_ds_batches("mnist", data_dir, 10, "train", batch_size)
-    _, train_len, img_shape, num_classes = train_ds
-    test_ds = get_ds_batches("mnist", data_dir, 10, "test", batch_size)
-    _, test_len, _, _ = test_ds
-    input_shape = (batch_size,) + img_shape
-
+    train_ds, test_ds, input_shape = \
+        get_ds_keras(ds_name, ds_dir, batch_size, num_classes)
+    
     opt_init, opt_update, get_params = optimizers.momentum(step_size, mass=0.9)
-
-    init_train_fun, train_fun = lenet(num_classes)
+    
+    init_train_fun, train_fun = net(num_classes)
     _, init_params = init_train_fun(key, input_shape)
     opt_state = opt_init(init_params)
 
-    _, test_fun = lenet(num_classes, mode="test")
+    _, test_fun = net(num_classes, mode="test")
 
     update_step = jit_update_fun(train_fun, loss_fun, (opt_update, get_params))
     predict_step = jit_predict_fun(test_fun)
 
     step = 0
     for ep in range(num_epochs):
-        train_batches, _, _, _ = get_ds_batches(
-            "mnist", data_dir, 10, "train", batch_size
-        )
         start_time = time.time()
-        for i, batch in tqdm(enumerate(train_batches), total=train_len):
+        for i, batch in enumerate(train_ds):
             key, subkey = random.split(key)
+            batch = (batch[0].numpy(), batch[1].numpy())
             opt_state = update_step(step, opt_state, batch, subkey)
             if step % 100 == 0:
                 inputs, labels = batch
@@ -119,11 +87,9 @@ def main():
         trained_params = get_params(opt_state)
 
         test_metrics = collections.defaultdict(float)
-        test_batches, _, _, _ = get_ds_batches(
-            "mnist", data_dir, 10, "test", batch_size
-        )
         start_time = time.time()
-        for i, batch in tqdm(enumerate(test_batches), total=test_len):
+        for i, batch in enumerate(test_ds):
+            batch = (batch[0].numpy(), batch[1].numpy())
             inputs, labels = batch
             key, subkey = random.split(key)
             logits = predict_step(trained_params, inputs, rng=subkey)
@@ -133,10 +99,9 @@ def main():
         print(
             f"Epoch: {ep:d}  "
             f"Time/Step: {(time.time() - start_time) / (i + 1):.3f}s  "
-            f"Eval Loss: {test_metrics['loss'] / test_len:.5f}  "
-            f"Eval Acc: {test_metrics['acc'] / test_len:.3f}"
+            f"Eval Loss: {test_metrics['loss'] / (i + 1):.5f}  "
+            f"Eval Acc: {test_metrics['acc'] / (i + 1):.3f}"
         )
-
 
 if __name__ == "__main__":
     main()

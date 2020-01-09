@@ -2,7 +2,7 @@
 
 ## Official Notebooks
 
-- TensorFlow
+### TensorFlow
   - [Lucid](https://github.com/tensorflow/lucid/tree/master/notebooks)
   - [Magenta](https://github.com/tensorflow/magenta-demos/tree/master/jupyter-notebooks)
   - [TF Hub](https://github.com/tensorflow/hub/tree/master/examples/colab)
@@ -13,5 +13,5 @@
   - [TF 2.0 Updates](https://github.com/tensorflow/docs/tree/master/site/en/r2)
   - [MG - Course](https://github.com/GoogleCloudPlatform/training-data-analyst/tree/master/courses/fast-and-lean-data-science)
 
-- JAX
+### JAX
   - [Intro](https://github.com/google/jax/tree/master/notebooks)
