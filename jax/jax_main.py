@@ -28,22 +28,25 @@ def accuracy(logits, labels):
 
 def jit_update_fun(model_fun, loss, opt):
     opt_update, get_params = opt
+
     def update(i, opt_state, batch, rng):
         params = get_params(opt_state)
         grads = grad(loss_fun)(params, batch, model_fun, rng)
         return opt_update(i, grads, opt_state)
+
     return jit(update)
 
 
 def jit_predict_fun(model_fun):
     def predict(params, inputs, rng=None):
         return jit(model_fun)(params, inputs, rng=rng)
+
     return predict
 
 
 def main():
     key = random.PRNGKey(0)
-    ds_name = "mnist"
+    ds_name = "cifar10"
     ds_dir = "/data"
     # net_name = "ResNet20"
     num_epochs = 15
@@ -53,11 +56,12 @@ def main():
     net_dict = {"mnist": lenet, "cifar10": ResNet20}
     net = net_dict[ds_name]
 
-    train_ds, test_ds, input_shape = \
-        get_ds_keras(ds_name, ds_dir, batch_size, num_classes)
-    
+    train_ds, test_ds, input_shape = get_ds_keras(
+        ds_name, ds_dir, batch_size, num_classes
+    )
+
     opt_init, opt_update, get_params = optimizers.momentum(step_size, mass=0.9)
-    
+
     init_train_fun, train_fun = net(num_classes)
     _, init_params = init_train_fun(key, input_shape)
     opt_state = opt_init(init_params)
@@ -102,6 +106,7 @@ def main():
             f"Eval Loss: {test_metrics['loss'] / (i + 1):.5f}  "
             f"Eval Acc: {test_metrics['acc'] / (i + 1):.3f}"
         )
+
 
 if __name__ == "__main__":
     main()

@@ -5,7 +5,8 @@ import tensorflow as tf
 
 from tensorflow import keras
 
-def get_ds_keras(ds_name:str, ds_dir: str, batch_size: int, num_classes:int):
+
+def get_ds_keras(ds_name: str, ds_dir: str, batch_size: int, num_classes: int):
     if ds_name == "mnist":
         ds_cache = os.path.join(ds_dir, "mnist.npz")
         ds_path = ds_cache if os.path.exists(ds_cache) else ""
@@ -17,15 +18,16 @@ def get_ds_keras(ds_name:str, ds_dir: str, batch_size: int, num_classes:int):
             tf.one_hot(lbl, num_classes),
         )
 
-        (train_images, train_labels), (test_images, test_labels) = \
-            ds.load_data(path=ds_path)
-    
+        (train_images, train_labels), (test_images, test_labels) = ds.load_data(
+            path=ds_path
+        )
+
     elif ds_name == "cifar10":
         ds = keras.datasets.cifar10
         input_shape = (batch_size, 32, 32, 3)
         lambda_fn = lambda img, lbl: (img, tf.one_hot(tf.squeeze(lbl), num_classes))
         (train_images, train_labels), (test_images, test_labels) = ds.load_data()
-    
+
     else:
         print("'ds_name' not recognized!!!")
 
