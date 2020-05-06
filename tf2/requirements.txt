@@ -1,9 +1,0 @@
-keras-tuner
-matplotlib
-numpy
-pillow
-tensorflow
-tensorflow-datasets
-tensorflow-hub
-tensorflow-model-optimization
-tensorflow-probability

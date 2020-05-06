@@ -14,7 +14,7 @@ def preprocess_fn(
     feature: Dict[str, tf.Tensor],
     output_height: int = 224,
     output_width: int = 224,
-    training: str = False,
+    training: bool = False,
 ) -> Dict[str, tf.Tensor]:
     image, label = feature["image"], feature["label"]
     image = tf.image.convert_image_dtype(image, tf.float32)
